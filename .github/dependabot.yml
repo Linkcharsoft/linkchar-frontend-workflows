@@ -1,0 +1,22 @@
+version: 2
+
+updates:
+  # Bumps the actions the shared workflows pin; each release then reaches the projects as a bump of this repo.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Argentina/Buenos_Aires
+    labels:
+      - dependencies
+    # The trailing space stops Dependabot from appending ":" to a prefix that ends in "]".
+    commit-message:
+      prefix: "[ CHORE ] "
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns:
+          - "*"
