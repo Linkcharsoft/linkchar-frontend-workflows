@@ -1,0 +1,78 @@
+name: Next CI
+
+on:
+  workflow_call:
+    inputs:
+      node-version-file:
+        description: File that pins the Node version.
+        type: string
+        default: .nvmrc
+      build-env:
+        description: Extra KEY=VALUE lines for the Build job, one per line. They override the defaults.
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  # The template lists Cypress as a devDependency; its binary is ~100 MB and no job here runs it.
+  CYPRESS_INSTALL_BINARY: 0
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          cache: pnpm
+
+      # `--frozen-lockfile` is what makes a dependency bump meaningful: it fails when the lockfile and package.json disagree.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: ESLint
+        run: pnpm run lint-check
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Dummy values that only satisfy the template's boot checks (constants/env.ts, utils/crypto.ts needs 32 chars).
+    env:
+      NEXT_PUBLIC_DOMAIN: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api
+      NEXT_PUBLIC_APP_ENV: development
+      AUTH_SECRET: ci0000000000000000000000000000ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ${{ inputs.node-version-file }}
+          cache: pnpm
+
+      - name: Project build env
+        if: inputs.build-env != ''
+        env:
+          BUILD_ENV: ${{ inputs.build-env }}
+        run: printf '%s\n' "$BUILD_ENV" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript
+        run: pnpm run type-check
+
+      # The real check on a dependency bump: it type-checks every route, resolves every import and runs Next's codegen.
+      - name: Build
+        run: pnpm run build
