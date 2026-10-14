@@ -130,7 +130,7 @@ jobs:
           esac
           {
             jq -r '.summary' <<<"$OUTPUT"
-            printf '\n%s — reviewed `%s`\n' "$line" "$SHA"
+            printf '\n%s — reviewed %s\n' "$line" "\`$SHA\`"
           } > "$RUNNER_TEMP/review.md"
           gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/review.md"
           echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
