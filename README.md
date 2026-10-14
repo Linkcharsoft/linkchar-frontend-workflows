@@ -1,6 +1,8 @@
-# linkchar-github-workflows
+# linkchar-frontend-workflows
 
-Shared, versioned GitHub Actions workflows for Linkchar's **frontend** projects. Both workflows are built for the frontend stack (the Next template today); backend repositories keep their own CI and Dependabot setup.
+Shared, versioned GitHub Actions workflows for Linkchar's **frontend** projects (the Next template today).
+
+**Frontend only, on purpose.** Tags version the whole repository, so a release here becomes a Dependabot bump PR — review, auto-merge, production redeploy — in every project that calls it. Backend workflows belong in their own repository following the same pattern, so neither team's releases reach the other's projects.
 
 Each project calls these workflows from a ~25-line `ci.yml` pinned to a release tag. Dependabot bumps that tag like any other action, so improving a workflow here means one release, and every project receives it as a reviewed PR.
 
@@ -30,12 +32,12 @@ permissions:
 
 jobs:
   ci:
-    uses: Linkcharsoft/linkchar-github-workflows/.github/workflows/next-ci.yml@v1.0.0
+    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/next-ci.yml@v1.0.0
 
   dependabot:
     needs: ci
     if: ${{ !cancelled() && github.actor == 'dependabot[bot]' }}
-    uses: Linkcharsoft/linkchar-github-workflows/.github/workflows/dependabot-review.yml@v1.0.0
+    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/dependabot-review.yml@v1.0.0
     permissions:
       contents: write
       pull-requests: write
