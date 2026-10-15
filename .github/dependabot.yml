@@ -1,6 +1,7 @@
 version: 2
 
 updates:
+  # No `labels:` on purpose: custom labels must already exist, while the defaults are created by Dependabot.
   # Bumps the actions the shared workflows pin; each release then reaches the projects as a bump of this repo.
   - package-ecosystem: github-actions
     directory: /
@@ -9,8 +10,6 @@ updates:
       day: monday
       time: "06:00"
       timezone: America/Argentina/Buenos_Aires
-    labels:
-      - dependencies
     # The trailing space stops Dependabot from appending ":" to a prefix that ends in "]".
     commit-message:
       prefix: "[ CHORE ] "
