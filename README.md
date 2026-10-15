@@ -9,7 +9,7 @@ Each project calls these workflows from a ~25-line `ci.yml` pinned to a release 
 | Workflow | What it does |
 | --- | --- |
 | [`next-ci.yml`](.github/workflows/next-ci.yml) | CI for projects built on `linkchar-next-template`: **Lint** (ESLint) and **Build** (type-check + `next build`) on a bare checkout, with dummy env values that satisfy the template's boot checks. |
-| [`dependabot-review.yml`](.github/workflows/dependabot-review.yml) | On Dependabot PRs only: Claude reads the changelog of every bumped package, checks whether the project uses what changed and returns a verdict; the workflow posts it as a comment and squash-merges patch/minor bumps that passed review **and** CI. |
+| [`dependabot-review.yml`](.github/workflows/dependabot-review.yml) | On Dependabot PRs only: Claude reads the changelog of every bumped package, checks whether the project uses what changed — and, when CI fails, reads the failed jobs' logs — and returns a verdict; the workflow posts it as a comment and squash-merges patch/minor bumps that passed review **and** CI. |
 
 ## Usage
 
@@ -32,13 +32,14 @@ permissions:
 
 jobs:
   ci:
-    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/next-ci.yml@v1.0.0
+    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/next-ci.yml@v2.0.0
 
   dependabot:
     needs: ci
     if: ${{ !cancelled() && github.actor == 'dependabot[bot]' }}
-    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/dependabot-review.yml@v1.0.0
+    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/dependabot-review.yml@v2.0.0
     permissions:
+      actions: read
       contents: write
       pull-requests: write
       id-token: write
