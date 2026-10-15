@@ -83,9 +83,9 @@ The squash commit is titled `[ CHORE ] Bump … (#N)`, following the commit conv
 
 > **Merging to `main` deploys to production.** Amplify builds `main` on push, so an auto-merged bump ships without a human in the loop. Lint, types and the build are the gate; the Claude verdict is a changelog review, not a security control — the 7-day `cooldown` in `dependabot.yml` is what keeps a freshly published malicious release out.
 
-## One-time setup (organization)
+## Setup
 
-1. **Secret** — create `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) under *Organization settings → Secrets and variables → **Dependabot***, shared with the frontend repositories. Runs triggered by Dependabot can only read Dependabot secrets; an Actions secret with the same name is invisible to them. Without it the review is skipped with a warning and nothing merges.
+1. **Secret, in every calling project** — create `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) under the project's *Settings → Secrets and variables → **Dependabot***. The caller passes it in, so a secret stored in **this** repository never reaches anyone. Runs triggered by Dependabot only read Dependabot secrets (an Actions secret with the same name is invisible to them), and on GitHub Free organization secrets do not reach private repositories — on a paid plan a single organization Dependabot secret shared with the frontend repositories replaces the per-repo ones. Without it the review is skipped with a warning and nothing merges.
 2. **Access** — keep this repository **public** (it holds no secrets): callers and Dependabot then reach it on any plan. If it must be private, allow access from the organization's repositories under *Settings → Actions → General → Access*, and add it under *Organization settings → Advanced Security → Grant Dependabot access to private repositories*.
 
 ## Releasing
