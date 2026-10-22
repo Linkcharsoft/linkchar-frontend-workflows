@@ -2,6 +2,10 @@
 
 Releases follow semver from the caller's point of view: a **major** is anything a project's `ci.yml` must adapt to.
 
+## 2.3.0
+
+- `dependabot-review.yml`: when the review clears a PR whose update type is not auto-merged (a major, or an unknown type), the Merge job now comments "Not auto-merged: …" instead of only logging it, so whoever follows the PR (a person or a panel) knows it is waiting to be tested.
+
 ## 2.2.0
 
 - `next-ci.yml`: optional `PACKAGES_TOKEN` secret. When given, both jobs write it to the user's `.npmrc` before installing, so projects that depend on private `@linkcharsoft/*` packages (the Linkchar CMS) install from GitHub Packages. Projects that don't pass it are unaffected.
