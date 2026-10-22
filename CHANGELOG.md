@@ -2,6 +2,10 @@
 
 Releases follow semver from the caller's point of view: a **major** is anything a project's `ci.yml` must adapt to.
 
+## 2.2.0
+
+- `next-ci.yml`: optional `PACKAGES_TOKEN` secret. When given, both jobs write it to the user's `.npmrc` before installing, so projects that depend on private `@linkcharsoft/*` packages (the Linkchar CMS) install from GitHub Packages. Projects that don't pass it are unaffected.
+
 ## 2.1.0
 
 - `dependabot-review.yml`: new `trusted-actors` input (default `inferencia-runner[bot]`). A push by a trusted actor to a Dependabot PR re-runs the review, which reviews its commits as a code change and returns `ok` only if the fix is correct and minimal for the bump; such a PR can then merge. Commits by anyone else still block the merge. To use it, gate the calling job on the PR author (`github.event.pull_request.user.login == 'dependabot[bot]'`) instead of `github.actor`, and add `CLAUDE_CODE_OAUTH_TOKEN` as an Actions secret too — see the README. Callers that change nothing behave as before.

@@ -32,13 +32,13 @@ permissions:
 
 jobs:
   ci:
-    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/next-ci.yml@v2.1.0
+    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/next-ci.yml@v2.2.0
 
   dependabot:
     needs: ci
     # Dependabot's PRs, whoever pushed last: the called workflow decides which pushers it trusts.
     if: ${{ !cancelled() && github.event.pull_request.user.login == 'dependabot[bot]' }}
-    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/dependabot-review.yml@v2.1.0
+    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/dependabot-review.yml@v2.2.0
     permissions:
       actions: read
       contents: write
@@ -63,6 +63,27 @@ A caller still gating the job on `github.actor == 'dependabot[bot]'` (the v2.0.0
 | --- | --- | --- |
 | `node-version-file` | `.nvmrc` | File that pins Node. |
 | `build-env` | `""` | Extra `KEY=VALUE` lines for the Build job, one per line — for a project whose build requires more variables than the template's. |
+
+| Secret | Purpose |
+| --- | --- |
+| `PACKAGES_TOKEN` | Optional. A token with `read:packages` on Linkcharsoft, written to the user's `.npmrc` before installing in both jobs, for projects that depend on private `@linkcharsoft/*` packages. |
+
+#### Projects with the Linkchar CMS
+
+`@linkcharsoft/cms` installs from GitHub Packages, and its build reads the published content from Supabase (the sitemap and every CMS page prerender, and the redirects past publishes left). The project passes the token and its Supabase project's public values:
+
+```yaml
+  ci:
+    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/next-ci.yml@v2.2.0
+    secrets:
+      PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+    with:
+      build-env: |
+        NEXT_PUBLIC_SUPABASE_URL=${{ vars.SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+```
+
+`PACKAGES_TOKEN` goes under the project's *Secrets and variables* both in **Actions** and in **Dependabot** (Dependabot runs read only their own secrets); `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` are repository **variables** (public values, the same the browser gets). Until the client's Supabase project exists, the Build job fails at `/sitemap.xml` with "Missing the Supabase URL".
 
 `dependabot-review.yml`
 
