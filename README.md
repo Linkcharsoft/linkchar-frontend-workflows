@@ -9,7 +9,7 @@ Each project calls these workflows from a ~25-line `ci.yml` pinned to a release 
 | Workflow | What it does |
 | --- | --- |
 | [`next-ci.yml`](.github/workflows/next-ci.yml) | CI for projects built on `linkchar-next-template`: **Lint** (ESLint) and **Build** (type-check + `next build`) on a bare checkout, with dummy env values that satisfy the template's boot checks. |
-| [`dependabot-review.yml`](.github/workflows/dependabot-review.yml) | On Dependabot PRs only: Claude reads the changelog of every bumped package, checks whether the project uses what changed — and, when CI fails, reads the failed jobs' logs — and returns a verdict; the workflow posts it as a comment and squash-merges patch/minor bumps that passed review **and** CI. |
+| [`dependabot-review.yml`](.github/workflows/dependabot-review.yml) | On Dependabot PRs only: Claude reads the changelog of every bumped package, checks whether the project uses what changed — and, when CI fails, reads the failed jobs' logs — and returns a verdict; the workflow posts it as a comment and squash-merges patch/minor bumps that passed review **and** CI. Fix commits pushed to the PR by a [trusted actor](#fix-commits-from-a-trusted-actor) are reviewed as a code change in the same pass. |
 
 ## Usage
 
@@ -32,12 +32,13 @@ permissions:
 
 jobs:
   ci:
-    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/next-ci.yml@v2.0.0
+    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/next-ci.yml@v2.1.0
 
   dependabot:
     needs: ci
-    if: ${{ !cancelled() && github.actor == 'dependabot[bot]' }}
-    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/dependabot-review.yml@v2.0.0
+    # Dependabot's PRs, whoever pushed last: the called workflow decides which pushers it trusts.
+    if: ${{ !cancelled() && github.event.pull_request.user.login == 'dependabot[bot]' }}
+    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/dependabot-review.yml@v2.1.0
     permissions:
       actions: read
       contents: write
@@ -51,6 +52,8 @@ jobs:
 ```
 
 Plus `.github/dependabot.yml`, which GitHub reads only from the project itself and cannot be shared — copy it from the Next template, whose version is the canonical one.
+
+A caller still gating the job on `github.actor == 'dependabot[bot]'` (the v2.0.0 example) keeps working, but never runs the review for a trusted actor's push: switch the `if` to the PR author as above to get fix commits reviewed and merged.
 
 ### Inputs
 
@@ -69,6 +72,7 @@ Plus `.github/dependabot.yml`, which GitHub reads only from the project itself a
 | `automerge` | `minor` | `minor` merges patch/minor bumps; any other value (use `off`) only reviews. Set the `DEPENDABOT_AUTOMERGE` repo variable to change it per project without touching the YAML. |
 | `model` | `claude-sonnet-5-5` | Model used for the review. |
 | `max-turns` | `40` | Caps the agent's turns on large grouped PRs. |
+| `trusted-actors` | `inferencia-runner[bot]` | Comma-separated logins, besides Dependabot, allowed to push fix commits to a Dependabot PR and still get it reviewed and merged. See [below](#fix-commits-from-a-trusted-actor). |
 
 ### Merge policy
 
@@ -76,17 +80,27 @@ A Dependabot PR is merged only when **all** of these hold:
 
 1. CI (`Lint` + `Build`) succeeded.
 2. Claude's verdict is `ok`.
-3. The highest update in the PR is a patch or minor (from `dependabot/fetch-metadata`, not from the agent). Majors are reviewed and commented, never merged.
-4. Every commit in the PR is Dependabot's, and the head is still the reviewed commit (`--match-head-commit`).
+3. The highest update in the PR is a patch or minor — the highest of `dependabot/fetch-metadata` and of the `update-type` lines in every Dependabot commit message, never the agent's word. Majors are reviewed and commented, never merged; an update type that cannot be determined never merges either.
+4. Every commit in the PR is Dependabot's (with a verified signature) or a trusted actor's, the run was triggered by one of them, and the head is still the reviewed commit (`--match-head-commit`).
 5. `automerge` is `minor`.
 
 The squash commit is titled `[ CHORE ] Bump … (#N)`, following the commit convention.
 
 > **Merging to `main` deploys to production.** Amplify builds `main` on push, so an auto-merged bump ships without a human in the loop. Lint, types and the build are the gate; the Claude verdict is a changelog review, not a security control — the 7-day `cooldown` in `dependabot.yml` is what keeps a freshly published malicious release out.
 
+### Fix commits from a trusted actor
+
+A PR the review does not clear stays open for a human — or for a bot that fixes it. When an actor listed in `trusted-actors` pushes a commit to the Dependabot branch, CI and the review run again on the new head:
+
+- The run must be triggered by Dependabot or a trusted actor, and the PR must be Dependabot's. A push by anyone else skips the review, so nothing merges.
+- Every commit is classified by its GitHub author: Dependabot's (signature verified), a trusted actor's, or anyone else's. The trusted actor must author its commits as its own account (for a GitHub App, `<id>+<app>[bot]@users.noreply.github.com`); a commit whose email maps to no account counts as someone else's.
+- The trusted actor's commits are listed for the review, which reviews them as a code change: the verdict is `ok` only if the fix is correct and minimal for the bump, and CI passed.
+- Any commit by someone else blocks the merge; the verdict comment says which.
+- The update type comes from Dependabot's own commit messages, so extra commits do not let a major through.
+
 ## Setup
 
-1. **Secret, in every calling project** — create `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) under the project's *Settings → Secrets and variables → **Dependabot***. The caller passes it in, so a secret stored in **this** repository never reaches anyone. Runs triggered by Dependabot only read Dependabot secrets (an Actions secret with the same name is invisible to them), and on GitHub Free organization secrets do not reach private repositories — on a paid plan a single organization Dependabot secret shared with the frontend repositories replaces the per-repo ones. Without it the review is skipped with a warning and nothing merges.
+1. **Secret, in every calling project** — create `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) **twice**, with the same value: under the project's *Settings → Secrets and variables → **Dependabot*** and under *Settings → Secrets and variables → **Actions***. Runs triggered by Dependabot only read Dependabot secrets; runs triggered by a trusted actor's push (e.g. a GitHub App) only read Actions secrets. The caller passes it in, so a secret stored in **this** repository never reaches anyone. On GitHub Free organization secrets do not reach private repositories — on a paid plan one organization secret of each kind, shared with the frontend repositories, replaces the per-repo ones. Without it the review is skipped with a warning and nothing merges.
 2. **Access** — keep this repository **public** (it holds no secrets): callers and Dependabot then reach it on any plan. If it must be private, allow access from the organization's repositories under *Settings → Actions → General → Access*, and add it under *Organization settings → Advanced Security → Grant Dependabot access to private repositories*.
 
 ## Releasing
