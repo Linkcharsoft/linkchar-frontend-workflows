@@ -11,6 +11,10 @@ on:
         description: Extra KEY=VALUE lines for the Build job, one per line. They override the defaults.
         type: string
         default: ""
+    secrets:
+      PACKAGES_TOKEN:
+        description: Token with read:packages on Linkcharsoft, for projects that install private @linkcharsoft packages (the Linkchar CMS).
+        required: false
 
 permissions:
   contents: read
@@ -35,6 +39,15 @@ jobs:
           cache: pnpm
 
       # `--frozen-lockfile` is what makes a dependency bump meaningful: it fails when the lockfile and package.json disagree.
+      # Private @linkcharsoft packages install from GitHub Packages; pnpm reads the credential from the user config only.
+      - name: GitHub Packages token
+        env:
+          PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+        run: |
+          if [ -n "$PACKAGES_TOKEN" ]; then
+            echo "//npm.pkg.github.com/:_authToken=${PACKAGES_TOKEN}" >> ~/.npmrc
+          fi
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -66,6 +79,15 @@ jobs:
         env:
           BUILD_ENV: ${{ inputs.build-env }}
         run: printf '%s\n' "$BUILD_ENV" >> "$GITHUB_ENV"
+
+      # Private @linkcharsoft packages install from GitHub Packages; pnpm reads the credential from the user config only.
+      - name: GitHub Packages token
+        env:
+          PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+        run: |
+          if [ -n "$PACKAGES_TOKEN" ]; then
+            echo "//npm.pkg.github.com/:_authToken=${PACKAGES_TOKEN}" >> ~/.npmrc
+          fi
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
