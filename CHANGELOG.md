@@ -2,6 +2,10 @@
 
 Releases follow semver from the caller's point of view: a **major** is anything a project's `ci.yml` must adapt to.
 
+## 3.0.0
+
+- **Breaking (job names only):** `next-ci.yml` runs **one job, "Lint and build"** (ESLint, type-check, `next build`), instead of the separate **Lint** and **Build** jobs. Each job paid its own checkout and `pnpm install` and was billed rounded up to the minute, so one job uses roughly half the Actions minutes. ESLint now runs before the type-check and build in the same job, so a lint error stops the run before the build. Inputs, secrets and permissions are unchanged: a caller only has to adapt if something refers to the old check names (`ci / Lint`, `ci / Build`), such as a required status check in a branch protection rule.
+
 ## 2.3.0
 
 - `dependabot-review.yml`: when the review clears a PR whose update type is not auto-merged (a major, or an unknown type), the Merge job now comments "Not auto-merged: …" instead of only logging it, so whoever follows the PR (a person or a panel) knows it is waiting to be tested.

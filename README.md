@@ -8,7 +8,7 @@ Each project calls these workflows from a ~25-line `ci.yml` pinned to a release 
 
 | Workflow | What it does |
 | --- | --- |
-| [`next-ci.yml`](.github/workflows/next-ci.yml) | CI for projects built on `linkchar-next-template`: **Lint** (ESLint) and **Build** (type-check + `next build`) on a bare checkout, with dummy env values that satisfy the template's boot checks. |
+| [`next-ci.yml`](.github/workflows/next-ci.yml) | CI for projects built on `linkchar-next-template`: one **Lint and build** job (ESLint, type-check and `next build`) on a bare checkout, with dummy env values that satisfy the template's boot checks. |
 | [`dependabot-review.yml`](.github/workflows/dependabot-review.yml) | On Dependabot PRs only: Claude reads the changelog of every bumped package, checks whether the project uses what changed — and, when CI fails, reads the failed jobs' logs — and returns a verdict; the workflow posts it as a comment and squash-merges patch/minor bumps that passed review **and** CI. Fix commits pushed to the PR by a [trusted actor](#fix-commits-from-a-trusted-actor) are reviewed as a code change in the same pass. |
 
 ## Usage
@@ -32,13 +32,13 @@ permissions:
 
 jobs:
   ci:
-    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/next-ci.yml@v2.2.0
+    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/next-ci.yml@v3.0.0
 
   dependabot:
     needs: ci
     # Dependabot's PRs, whoever pushed last: the called workflow decides which pushers it trusts.
     if: ${{ !cancelled() && github.event.pull_request.user.login == 'dependabot[bot]' }}
-    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/dependabot-review.yml@v2.2.0
+    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/dependabot-review.yml@v3.0.0
     permissions:
       actions: read
       contents: write
@@ -62,7 +62,7 @@ A caller still gating the job on `github.actor == 'dependabot[bot]'` (the v2.0.0
 | Input | Default | Purpose |
 | --- | --- | --- |
 | `node-version-file` | `.nvmrc` | File that pins Node. |
-| `build-env` | `""` | Extra `KEY=VALUE` lines for the Build job, one per line — for a project whose build requires more variables than the template's. |
+| `build-env` | `""` | Extra `KEY=VALUE` lines for the build, one per line — for a project whose build requires more variables than the template's. |
 
 | Secret | Purpose |
 | --- | --- |
@@ -74,7 +74,7 @@ A caller still gating the job on `github.actor == 'dependabot[bot]'` (the v2.0.0
 
 ```yaml
   ci:
-    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/next-ci.yml@v2.2.0
+    uses: Linkcharsoft/linkchar-frontend-workflows/.github/workflows/next-ci.yml@v3.0.0
     secrets:
       PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
     with:
@@ -83,7 +83,7 @@ A caller still gating the job on `github.actor == 'dependabot[bot]'` (the v2.0.0
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ vars.SUPABASE_PUBLISHABLE_KEY }}
 ```
 
-`PACKAGES_TOKEN` goes under the project's *Secrets and variables* both in **Actions** and in **Dependabot** (Dependabot runs read only their own secrets); `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` are repository **variables** (public values, the same the browser gets). Until the client's Supabase project exists, the Build job fails at `/sitemap.xml` with "Missing the Supabase URL".
+`PACKAGES_TOKEN` goes under the project's *Secrets and variables* both in **Actions** and in **Dependabot** (Dependabot runs read only their own secrets); `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` are repository **variables** (public values, the same the browser gets). Until the client's Supabase project exists, the Lint and build job fails at `/sitemap.xml` with "Missing the Supabase URL".
 
 `dependabot-review.yml`
 
